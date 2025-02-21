@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: backend_mediapp
+    container_name: mediapp
+    volumes:
+      - .:/var/www
+    ports:
+      - "8000:9000"
+    depends_on:
+      - db
+    environment:  # Agrega variables de entorno si tu app necesita conectarse a la DB
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: mediapp
+      DB_USER: postgres
+      DB_PASSWORD: asdasdasd123
+
+  db:
+    image: postgres:12  # Imagen oficial de PostgreSQL (versión preferible 12)
+    container_name: mediapp_db
+    restart: always
+    environment:
+      POSTGRES_DB: mediapp        # Nombre de la base de datos
+      POSTGRES_USER: postgres     # Usuario (tú lo indicaste)
+      POSTGRES_PASSWORD: asdasdasd123  # Contraseña que proporcionaste
+    ports:
+      - "5432:5432"  # Puerto predeterminado de PostgreSQL
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Volumen para persistencia de datos
+
+volumes:
+  postgres_data:  # Define un volumen para PostgreSQL
