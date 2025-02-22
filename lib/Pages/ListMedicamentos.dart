@@ -5,7 +5,7 @@ import 'package:mediapp/Models/Medicamentos.dart';
 import 'package:mediapp/Pages/ActualizarMedicamentos.dart';
 import 'package:mediapp/Pages/NuevoMedicamento.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:mediapp/Widgets/notification_services.dart';
 import '../Utilerias/Ambiente.dart';
 import '../Widgets/custom_drawer.dart';
 import 'DatosMedicamento.dart';
@@ -59,41 +59,43 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
   }
 
   void fnObtenerCategorias() async {
-    // Obtener el idUsuario desde SharedPreferences
     final idUsuario = await obtenerIdUsuario();
     if (idUsuario == null) {
       print('No se encontró el ID del usuario');
-      return;  // Terminar la función si no se encuentra el ID
+      return;
     } else {
       print('ID del usuario recuperado: $idUsuario');
     }
+
     try {
-      // Realizar la solicitud HTTP pasando el idUsuario como parámetro en lugar de token
       final response = await http.get(
-        Uri.parse('${Ambiente.urlServe}/api/categorias?user_id=$idUsuario'),  // Pasar el idUsuario como parámetro de consulta
-        headers: <String, String>{
+        Uri.parse('${Ambiente.urlServe}/api/categorias?user_id=$idUsuario'),
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Accept': 'application/json',
-          // No es necesario el token aquí si estás usando el idUsuario directamente
         },
       );
-      // Manejar la respuesta
+
+
+
       if (response.statusCode == 200) {
-        // Decodificar la respuesta JSON
         var responseBody = jsonDecode(response.body);
 
-        // Acceder a la lista de categorías desde la clave 'data'
-        Iterable mapCategorias = responseBody['data'];
+        if (responseBody.containsKey('data')) {
+          Iterable mapCategorias = responseBody['data'];
+          medicamentos = List<Medicamentos>.from(
+            mapCategorias.map((model) => Medicamentos.fromJson(model)),
+          );
 
-        // Convertir la lista de categorías en objetos de tipo 'Categorias'
-        medicamentos = List<Medicamentos>.from(
-          mapCategorias.map((model) => Medicamentos.fromJson(model)),
-        );
+          print('Medicamentos cargados: ${medicamentos.length}');
 
-        // Actualizar el estado para reflejar los cambios en la UI
-        setState(() {});
+          setState(() {});
+        } else {
+          print('Error: La clave "data" no está en la respuesta');
+        }
       } else {
         print('Error al obtener los medicamentos: ${response.statusCode}');
+        print('Cuerpo de la respuesta: ${response.body}');
       }
     } catch (e) {
       print('Error: $e');
@@ -140,6 +142,14 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
 
   Future<void> _fnEliminarMedicamento(int medicamentoId) async {
     try {
+      List<int> notificationIds = await obtenerIdsNotificacion(medicamentoId.toString());
+
+      // 🔥 Cancelar solo las notificaciones asociadas a este medicamento
+      for (int id in notificationIds) {
+        await NotificationService.cancelNotification(id);
+        print("❌ Notificación con ID $id cancelada");
+      }
+      // 2. Eliminar el medicamento del servidor
       final response = await http.delete(
         Uri.parse('${Ambiente.urlServe}/api/categoria/$medicamentoId/borrar'),
         headers: <String, String>{
@@ -148,12 +158,12 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
       );
 
       if (response.statusCode == 200) {
-        print('Categoría eliminada correctamente');
+        print('Medicamento eliminado correctamente');
         setState(() {
-          medicamentos.removeWhere((medicamento) => medicamento.id == medicamentoId); // Remover localmente
+          medicamentos.removeWhere((medicamento) => medicamento.id == medicamentoId);
         });
       } else {
-        print('Error al eliminar la categoría: ${response.statusCode}');
+        print('Error al eliminar el medicamento: ${response.statusCode}');
         print('Cuerpo de respuesta: ${response.body}');
       }
     } catch (e) {
