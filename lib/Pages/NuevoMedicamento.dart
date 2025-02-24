@@ -20,29 +20,34 @@ Future<int?> obtenerIdUsuario() async {
   return prefs.getInt('id_usuario');  // Asegúrate de que el ID del usuario esté guardado bajo esta clave
 }
 
-Future<void> guardarIdsNotificacion(String nombreMedicamento, List<int> ids) async {
+
+Future<void> guardarIdsNotificacion(int medicamentoId, List<int> ids) async {
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList(nombreMedicamento, ids.map((id) => id.toString()).toList());
+  await prefs.setStringList(medicamentoId.toString(), ids.map((e) => e.toString()).toList());
 }
 
-Future<List<int>> obtenerIdsNotificacion(String nombreMedicamento) async {
+Future<void> debugSharedPreferences() async {
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getStringList(nombreMedicamento)?.map(int.parse).toList() ?? [];
+  print("🔍 Contenido actual de SharedPreferences:");
+  prefs.getKeys().forEach((key) {
+    print("$key: ${prefs.getStringList(key)}");
+  });
 }
 
-Future<void> eliminarNotificacionesDeMedicamento(String nombreMedicamento) async {
-  List<int> ids = await obtenerIdsNotificacion(nombreMedicamento);
+Future<List<int>> obtenerIdsNotificacion(int medicamentoId) async {
+  final prefs = await SharedPreferences.getInstance();
+  List<String>? idsStringList = prefs.getStringList(medicamentoId.toString());
 
-  for (int id in ids) {
-    await NotificationService.flutterLocalNotificationsPlugin.cancel(id);
-    print("🗑️ Notificación con ID $id eliminada");
+  if (idsStringList != null) {
+    return idsStringList.map(int.parse).toList();
+  } else {
+    return [];
   }
-
-  // Eliminar los IDs almacenados
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.remove(nombreMedicamento);
-  print("✅ Todas las notificaciones de $nombreMedicamento eliminadas");
 }
+
+
+
+
 
 class _NuevomedicamentoState extends State<Nuevomedicamento> {
   TextEditingController txtnombre = TextEditingController();
@@ -171,7 +176,6 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                         print('El id_usuario no está disponible');
                         return;
                       }
-
                       DateTime? scheduledDate;
                       if (txtfecha.text.isNotEmpty && txthora.text.isNotEmpty) {
                         List<String> fechaParts = txtfecha.text.split('-');
@@ -202,17 +206,13 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                         }
                       }
 
-                      int notificationID = 1;
+
+                      List<int> notificationIds = [];
 
                         // Si la fecha es válida, programar la notificación
                       if (scheduledDate != null) {
 
-                        NotificationService.scheduleNotification(
-                          "Recordatorio de medicamento",
-                          "Es hora de tomar ${txtnombre.text}",
-                          scheduledDate,
-                          notificationID
-                        );
+
 
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text("Notificación programada para ${txthora.text} el ${txtfecha.text}")),
@@ -220,7 +220,8 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
 
                         int frecuencia = int.tryParse(txtfrecu.text) ?? 0; // Convierte la frecuencia a entero
                         int dias = int.tryParse(txtfrecuDias.text) ?? 0;  // Convierte la cantidad de días a entero
-                        List<int> notificationIds = [];
+
+
                         if (frecuencia > 0 && dias > 0) {
                           for (int d = 0; d < dias; d++) { // 🔥 Itera sobre los días
                             for (int i = 0; i < (24 ~/ frecuencia); i++) { // 🔥 Itera sobre las horas dentro de cada día
@@ -231,14 +232,14 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                               print("📅 Programando notificación para: $newScheduledDate con ID: $notificationId");
 
                               NotificationService.scheduleNotification(
-                                "Recordatorio de medicamento",
+                                "Recordatorio de medicamento 2",
                                 "Es hora de tomar ${txtnombre.text}",
                                 newScheduledDate,
                                 notificationId, // Pasar el ID único
                               );
                             }
                           }
-                          await guardarIdsNotificacion(txtnombre.text, notificationIds);
+                          print(notificationIds);
                         }
                       } else {
                         print("⚠️ scheduledDate es nulo o inválido. No se programará la notificación.");
@@ -262,11 +263,33 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                       );
 
                       if (response.statusCode == 200) {
-                        print('Medicamento guardada correctamente');
+                        print('Medicamento guardado correctamente');
+                        print('Respuesta del servidor: ${response.body}'); // 👈 Debug
 
+                        String responseBody = response.body.trim(); // Quita espacios extra
 
+                        if (responseBody == "ok") {
+                          print("El servidor devolvió 'ok', pero no un JSON con el ID.");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Medicamento guardado, pero no se recibió un ID.")),
+                          );
 
-                        Navigator.pop(context, true);
+                        } else {
+                          try {
+                            final responseData = jsonDecode(responseBody);
+                            int medicamentoId = responseData['id']; // Verifica que el servidor devuelva un 'id'
+
+                            // Guardar notificaciones con el ID real
+                            await guardarIdsNotificacion(medicamentoId, notificationIds);
+
+                            Navigator.pop(context, true);
+                          } catch (e) {
+                            print('Error al procesar la respuesta del servidor: $e');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Error al procesar respuesta: ${response.body}")),
+                            );
+                          }
+                        }
                       } else {
                         print('Error al guardar el medicamento: ${response.statusCode}');
                         print('Cuerpo de respuesta: ${response.body}');

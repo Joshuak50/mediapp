@@ -142,12 +142,16 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
 
   Future<void> _fnEliminarMedicamento(int medicamentoId) async {
     try {
-      List<int> notificationIds = await obtenerIdsNotificacion(medicamentoId.toString());
-
+      List<int> notificationIds = await obtenerIdsNotificacion(medicamentoId);
+      print("🔍 IDs de notificaciones a eliminar: $notificationIds");
       // 🔥 Cancelar solo las notificaciones asociadas a este medicamento
-      for (int id in notificationIds) {
-        await NotificationService.cancelNotification(id);
-        print("❌ Notificación con ID $id cancelada");
+      if(notificationIds.isNotEmpty) {
+        for (int id in notificationIds) {
+          await NotificationService.cancelNotification(id);
+          print("❌ Notificación con ID $id cancelada");
+        }
+      }else{
+        print("⚠️ No hay notificaciones asociadas a este medicamento para eliminar.");
       }
       // 2. Eliminar el medicamento del servidor
       final response = await http.delete(
@@ -175,7 +179,7 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
     return ListView.builder(
       itemCount: medicamentos.length,
       itemBuilder: (context, index) {
-        final medicamento = medicamentos[index]; // Referencia a la categoría actual
+        final medicamento = medicamentos[index];
 
         return FutureBuilder<double>(
           future: _fnObtenerMontoTotal(medicamento.id),
@@ -213,7 +217,7 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () {
-                        _fnEliminarMedicamento(medicamento.id); // Método para eliminar categoría
+                        _fnEliminarMedicamento(medicamento.id); // Método para eliminar medicamento
                       },
                     ),
                   ],

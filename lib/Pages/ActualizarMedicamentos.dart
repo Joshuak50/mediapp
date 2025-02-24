@@ -143,14 +143,6 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                         txthora.text = pickedTime.format(context);
                       });
 
-                      if (scheduledDate != null) {
-                        print("📅 Notificación programada para: $scheduledDate");
-                        NotificationService.scheduleNotification(
-                          "Recordatorio de medicamento",
-                          "Es hora de tomar ${txtnombre.text}",
-                          scheduledDate,
-                        );
-                      }
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text("Notificación programada para ${txthora.text}")),
@@ -208,7 +200,7 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                       }
                     }
 
-
+                    int notificationID = 1;
 
 // Si la fecha es válida, programar la notificación
                     if (scheduledDate != null) {
@@ -218,6 +210,8 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                         "Recordatorio de medicamento",
                         "Es hora de tomar ${txtnombre.text}",
                         scheduledDate,
+                        notificationID,
+
                       );
 
                       ScaffoldMessenger.of(context).showSnackBar(
