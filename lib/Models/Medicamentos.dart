@@ -6,20 +6,22 @@ class Medicamentos {
   final String fecha;
   final String dosis;
   final int frecuencia;
+  final int frecuenciaDias;
   final int id_usuario; // Añadimos el campo id_usuario
 
-  Medicamentos(this.id, this.nombre, this.descripcion, this.hora, this.fecha, this.dosis, this.frecuencia, this.id_usuario);
+  Medicamentos(this.id, this.nombre, this.descripcion, this.hora, this.fecha, this.dosis, this.frecuencia, this.frecuenciaDias, this.id_usuario);
 
-  Medicamentos.fromJson(Map<String, dynamic> json)
-      : id = json['id'],
-        nombre = json['nombre'],
-        descripcion = json['descripcion'],
-        hora = json['hora'],
-        fecha = json['fecha'],
-        dosis = json['dosis'],
-        frecuencia = json['frecuencia'],
-        id_usuario = json['id_usuario']; // Aseguramos que también se convierta
-
-// Este getter ya no es necesario
-// get id_usuario => null;
+  factory Medicamentos.fromJson(Map<String, dynamic> json) {
+    return Medicamentos(
+      json['id'],
+      json['nombre'],
+      json['descripcion'],
+      json['hora'],
+      json['fecha'],
+      json['dosis'], // Se deja como String
+      int.tryParse(json['frecuencia'].toString()) ?? 0, // Convierte a int si es necesario
+      int.tryParse(json['frecuenciaDias'].toString()) ?? 0, // Convierte a int si es necesario
+      int.tryParse(json['id_usuario'].toString()) ?? 0, // Convierte a int si es necesario
+    );
+  }
 }

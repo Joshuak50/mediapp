@@ -5,7 +5,7 @@ import 'package:mediapp/Models/Medicamentos.dart';
 import 'package:mediapp/Pages/ActualizarMedicamentos.dart';
 import 'package:mediapp/Pages/NuevoMedicamento.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:mediapp/Widgets/notification_services.dart';
 import '../Utilerias/Ambiente.dart';
 import '../Widgets/custom_drawer.dart';
 import 'DatosMedicamento.dart';
@@ -79,21 +79,23 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
       );
       // Manejar la respuesta
       if (response.statusCode == 200) {
-        // Decodificar la respuesta JSON
         var responseBody = jsonDecode(response.body);
 
-        // Acceder a la lista de categorías desde la clave 'data'
-        Iterable mapCategorias = responseBody['data'];
+        if (responseBody.containsKey('data')) {
+          Iterable mapCategorias = responseBody['data'];
+          medicamentos = List<Medicamentos>.from(
+            mapCategorias.map((model) => Medicamentos.fromJson(model)),
+          );
 
-        // Convertir la lista de categorías en objetos de tipo 'Categorias'
-        medicamentos = List<Medicamentos>.from(
-          mapCategorias.map((model) => Medicamentos.fromJson(model)),
-        );
+          print('Medicamentos cargados: ${medicamentos.length}');
 
-        // Actualizar el estado para reflejar los cambios en la UI
-        setState(() {});
+          setState(() {});
+        } else {
+          print('Error: La clave "data" no está en la respuesta');
+        }
       } else {
         print('Error al obtener los medicamentos: ${response.statusCode}');
+        print('Cuerpo de la respuesta: ${response.body}');
       }
     } catch (e) {
       print('Error: $e');
@@ -140,6 +142,17 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
 
   Future<void> _fnEliminarMedicamento(int medicamentoId) async {
     try {
+      List<int> notificationIds = await obtenerIdsNotificacion(medicamentoId);
+      print("🔍 IDs de notificaciones a eliminar: $notificationIds");
+      // 🔥 Cancelar solo las notificaciones asociadas a este medicamento
+      if(notificationIds.isNotEmpty) {
+        for (int id in notificationIds) {
+          await NotificationService.cancelNotification(id);
+          print("❌ Notificación con ID $id cancelada");
+        }
+      }else{
+        print("⚠️ No hay notificaciones asociadas a este medicamento para eliminar.");
+      }
       final response = await http.delete(
         Uri.parse('${Ambiente.urlServe}/api/categoria/$medicamentoId/borrar'),
         headers: <String, String>{
@@ -248,14 +261,14 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
       drawer: CustomDrawer(),
       body: Container( // Agregamos un Container para definir el fondo
           color: Color(0xFFF5F5DC),
-          width: 1100, // Opcional
-          height: 1000,// Código de color beige
+          width: 1100,
+          height: 1000,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
-                  height: 300,
+                  height: 1000,
                   child: medicamentos.isNotEmpty
                       ? _listViewMedicamentos()
                       : const Center(child: CircularProgressIndicator()),

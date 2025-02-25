@@ -21,6 +21,7 @@ class _DatosmedicamentoState extends State<Datosmedicamento> {
   late TextEditingController txthora;
   late TextEditingController txtdosis;
   late TextEditingController txtfrecu;
+  late TextEditingController txtfrecuDias;
   late TextEditingController txtid_usuario;
 
   @override
@@ -33,6 +34,7 @@ class _DatosmedicamentoState extends State<Datosmedicamento> {
     txthora = TextEditingController(text: widget.medicamentos.hora);
     txtdosis = TextEditingController(text: widget.medicamentos.dosis);
     txtfrecu = TextEditingController(text: widget.medicamentos.frecuencia.toString());
+    txtfrecuDias = TextEditingController(text: widget.medicamentos.frecuenciaDias.toString());
     txtid_usuario = TextEditingController(text: widget.medicamentos.id_usuario.toString());
   }
 
@@ -50,6 +52,7 @@ class _DatosmedicamentoState extends State<Datosmedicamento> {
           'hora': txthora.text,
           'dosis': txtdosis.text,
           'frecuencia': txtfrecu.text,
+          'frecuenciaDias': txtfrecuDias.text,
           'id_usuario': int.parse(txtid_usuario.text),
         }),
       );
@@ -119,6 +122,12 @@ class _DatosmedicamentoState extends State<Datosmedicamento> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(widget.medicamentos.frecuencia.toString()),
+                const SizedBox(height: 10),
+                const Text(
+                  "Frecuencia en dias:",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(widget.medicamentos.frecuenciaDias.toString()),
               ],
             ),
           ),

@@ -25,6 +25,7 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
   late TextEditingController txthora;
   late TextEditingController txtdosis;
   late TextEditingController txtfrecu;
+  late TextEditingController txtfrecuDias;
   late TextEditingController txtid_usuario;
 
   @override
@@ -37,6 +38,7 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
     txthora = TextEditingController(text: widget.medicamentos.hora);
     txtdosis = TextEditingController(text: widget.medicamentos.dosis);
     txtfrecu = TextEditingController(text: widget.medicamentos.frecuencia.toString());
+    txtfrecuDias = TextEditingController(text: widget.medicamentos.frecuenciaDias.toString());
     txtid_usuario = TextEditingController(text: widget.medicamentos.id_usuario.toString());
   }
 
@@ -54,6 +56,7 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
           'hora': txthora.text,
           'dosis': txtdosis.text,
           'frecuencia': txtfrecu.text,
+          'frecuenciaDias': txtfrecuDias.text,
           'id_usuario': int.parse(txtid_usuario.text),
         }),
       );
@@ -143,15 +146,6 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                         txthora.text = pickedTime.format(context);
                       });
 
-                      if (scheduledDate != null) {
-                        print("📅 Notificación programada para: $scheduledDate");
-                        NotificationService.scheduleNotification(
-                          "Recordatorio de medicamento",
-                          "Es hora de tomar ${txtnombre.text}",
-                          scheduledDate,
-                        );
-                      }
-
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text("Notificación programada para ${txthora.text}")),
                       );
@@ -174,88 +168,100 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                     labelText: "Frecuencia",
                   ),
                 ),
+                TextFormField(
+                  controller: txtfrecuDias,
+                  keyboardType: TextInputType.number, // Solo permite teclado numérico
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.digitsOnly, // Filtra solo números
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: "Dias",
+                  ),
+                ),
                 const SizedBox(height: 20),
                 TextButton(
                   onPressed: () async {
                     try{
-                    DateTime? scheduledDate;
-                    if (txtfecha.text.isNotEmpty && txthora.text.isNotEmpty) {
-                      List<String> fechaParts = txtfecha.text.split('-');
-                      List<String> horaParts = txthora.text.replaceAll(RegExp(r'[^0-9:]'), '').split(':');
+                      DateTime? scheduledDate;
+                      if (txtfecha.text.isNotEmpty && txthora.text.isNotEmpty) {
+                        List<String> fechaParts = txtfecha.text.split('-');
+                        List<String> horaParts = txthora.text.replaceAll(RegExp(r'[^0-9:]'), '').split(':');
 
-                      if (fechaParts.length == 3 && horaParts.length == 2) {
-                        try {
-                          DateTime localDateTime = DateTime(
-                            int.parse(fechaParts[0].trim()), // Año
-                            int.parse(fechaParts[1].trim()), // Mes
-                            int.parse(fechaParts[2].trim()), // Día
-                            int.parse(horaParts[0].trim()),  // Hora
-                            int.parse(horaParts[1].trim()),  // Minuto
-                          );
+                        if (fechaParts.length == 3 && horaParts.length == 2) {
+                          try {
+                            DateTime localDateTime = DateTime(
+                              int.parse(fechaParts[0].trim()), // Año
+                              int.parse(fechaParts[1].trim()), // Mes
+                              int.parse(fechaParts[2].trim()), // Día
+                              int.parse(horaParts[0].trim()),  // Hora
+                              int.parse(horaParts[1].trim()),  // Minuto
+                            );
 
-                          // Convertir a TZDateTime usando la zona horaria local
-                          scheduledDate = tz.TZDateTime.from(localDateTime, tz.local);
+                            // Convertir a TZDateTime usando la zona horaria local
+                            scheduledDate = tz.TZDateTime.from(localDateTime, tz.local);
 
-                          // Si la hora ya pasó, mover al día siguiente
-                          if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
-                            scheduledDate = scheduledDate.add(const Duration(days: 1));
-                            print("🔄 La hora ya pasó. Programando para el día siguiente: $scheduledDate");
+                            // Si la hora ya pasó, mover al día siguiente
+                            if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
+                              scheduledDate = scheduledDate.add(const Duration(days: 1));
+                              print("🔄 La hora ya pasó. Programando para el día siguiente: $scheduledDate");
+                            }
+
+                          } catch (e) {
+                            print("❌ Error al convertir fecha y hora: $e");
                           }
-
-                        } catch (e) {
-                          print("❌ Error al convertir fecha y hora: $e");
                         }
                       }
-                    }
 
-
+                      int notificationID = 1;
 
 // Si la fecha es válida, programar la notificación
-                    if (scheduledDate != null) {
-                      print("📅 Programando notificación para: $scheduledDate");
+                      if (scheduledDate != null) {
+                        print("📅 Programando notificación para: $scheduledDate");
 
-                      NotificationService.scheduleNotification(
-                        "Recordatorio de medicamento",
-                        "Es hora de tomar ${txtnombre.text}",
-                        scheduledDate,
+                        NotificationService.scheduleNotification(
+                          "Recordatorio de medicamento",
+                          "Es hora de tomar ${txtnombre.text}",
+                          scheduledDate,
+                          notificationID,
+                        );
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Notificación programada para ${txthora.text} el ${txtfecha.text}")),
+                        );
+                      } else {
+                        print("⚠️ scheduledDate es nulo o inválido. No se programará la notificación.");
+                      }
+
+                      final response = await http.put(
+                        Uri.parse('${Ambiente.urlServe}/api/categoria/${widget.medicamentos.id}/actu'),
+                        headers: <String, String>{
+                          'Content-Type': 'application/json; charset=UTF-8',
+                        },
+                        body: jsonEncode(<String, dynamic>{
+                          'nombre': txtnombre.text,
+                          'descripcion': txtdesc.text,
+                          'fecha': txtfecha.text,
+                          'hora': txthora.text,
+                          'dosis': txtdosis.text,
+                          'frecuencia': txtfrecu.text,
+                          'frecuenciaDias': txtfrecuDias.text,
+                          'id_usuario': int.parse(txtid_usuario.text),
+                        }),
                       );
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Notificación programada para ${txthora.text} el ${txtfecha.text}")),
-                      );
-                    } else {
-                      print("⚠️ scheduledDate es nulo o inválido. No se programará la notificación.");
+                      if (response.statusCode == 200) {
+                        print('Medicamento actualizada correctamente');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const Listmedicamentos()),
+                        );
+                      } else {
+                        print('Error al actualizar el medicamento: ${response.statusCode}');
+                        print('Cuerpo de respuesta: ${response.body}');
+                      }
+                    } catch (e) {
+                      print('Error: $e');
                     }
-
-                    final response = await http.put(
-                      Uri.parse('${Ambiente.urlServe}/api/categoria/${widget.medicamentos.id}/actu'),
-                      headers: <String, String>{
-                        'Content-Type': 'application/json; charset=UTF-8',
-                      },
-                      body: jsonEncode(<String, dynamic>{
-                        'nombre': txtnombre.text,
-                        'descripcion': txtdesc.text,
-                        'fecha': txtfecha.text,
-                        'hora': txthora.text,
-                        'dosis': txtdosis.text,
-                        'frecuencia': txtfrecu.text,
-                        'id_usuario': int.parse(txtid_usuario.text),
-                      }),
-                    );
-
-                    if (response.statusCode == 200) {
-                      print('Medicamento actualizada correctamente');
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const Listmedicamentos()),
-                      );
-                    } else {
-                      print('Error al actualizar el medicamento: ${response.statusCode}');
-                      print('Cuerpo de respuesta: ${response.body}');
-                    }
-                  } catch (e) {
-                    print('Error: $e');
-                  }
 
                   },
                   child: const Text("Actualizar"),

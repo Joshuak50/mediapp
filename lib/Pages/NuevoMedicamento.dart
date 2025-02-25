@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:mediapp/Pages/ListMedicamentos.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Utilerias/Ambiente.dart';
 import '../Widgets/notification_services.dart';
@@ -20,6 +21,30 @@ Future<int?> obtenerIdUsuario() async {
   return prefs.getInt('id_usuario');  // Asegúrate de que el ID del usuario esté guardado bajo esta clave
 }
 
+Future<void> guardarIdsNotificacion(int medicamentoId, List<int> ids) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setStringList(medicamentoId.toString(), ids.map((e) => e.toString()).toList());
+}
+
+Future<void> debugSharedPreferences() async {
+  final prefs = await SharedPreferences.getInstance();
+  print("🔍 Contenido actual de SharedPreferences:");
+  prefs.getKeys().forEach((key) {
+    print("$key: ${prefs.getStringList(key)}");
+  });
+}
+
+Future<List<int>> obtenerIdsNotificacion(int medicamentoId) async {
+  final prefs = await SharedPreferences.getInstance();
+  List<String>? idsStringList = prefs.getStringList(medicamentoId.toString());
+
+  if (idsStringList != null) {
+    return idsStringList.map(int.parse).toList();
+  } else {
+    return [];
+  }
+}
+
 class _NuevomedicamentoState extends State<Nuevomedicamento> {
   TextEditingController txtnombre = TextEditingController();
   TextEditingController txtdesc = TextEditingController();
@@ -27,6 +52,7 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
   TextEditingController txthora = TextEditingController();
   TextEditingController txtdosis = TextEditingController();
   TextEditingController txtfrecu = TextEditingController();
+  TextEditingController txtfrecuDias = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -100,15 +126,6 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                         txthora.text = pickedTime.format(context);
                       });
 
-                      if (scheduledDate != null) {
-                        print("📅 Notificación programada para: $scheduledDate");
-                        NotificationService.scheduleNotification(
-                          "Recordatorio de medicamento",
-                          "Es hora de tomar ${txtnombre.text}",
-                          scheduledDate,
-                        );
-                      }
-
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text("Notificación programada para ${txthora.text}")),
                       );
@@ -129,6 +146,16 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                   ],
                   decoration: const InputDecoration(
                     labelText: "Frecuencia del medicamento",
+                  ),
+                ),
+                TextFormField(
+                  controller: txtfrecuDias,
+                  keyboardType: TextInputType.number, // Solo permite teclado numérico
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.digitsOnly, // Filtra solo números
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: "por cuantos dias:",
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -177,36 +204,34 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                         }
                       }
 
+                      List<int> notificationIds = [];
 
-
-// Si la fecha es válida, programar la notificación
                       if (scheduledDate != null) {
-                        print("📅 Programando notificación para: $scheduledDate");
-
-                        NotificationService.scheduleNotification(
-                          "Recordatorio de medicamento",
-                          "Es hora de tomar ${txtnombre.text}",
-                          scheduledDate,
-                        );
-
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text("Notificación programada para ${txthora.text} el ${txtfecha.text}")),
                         );
 
-                        int frecuencia = int.tryParse(txtfrecu.text) ?? 0;// Convierte la frecuencia a entero
-                        if (frecuencia > 0) {
-                          for (int i = 1; i <
-                              (24 ~/ frecuencia); i++) { // Evita más de 24 notificaciones por día
-                            DateTime newScheduledDate = scheduledDate.add(Duration(
-                                hours: frecuencia * i));
-                            print("📅 Programando notificación repetitiva para: $newScheduledDate");
+                        int frecuencia = int.tryParse(txtfrecu.text) ?? 0;
+                        int dias = int.tryParse(txtfrecuDias.text) ?? 0;
 
-                            NotificationService.scheduleNotification(
-                              "Recordatorio de medicamento",
-                              "Es hora de tomar ${txtnombre.text}",
-                              newScheduledDate,
-                            );
+                        if (frecuencia > 0 && dias > 0) {
+                          for (int d = 0; d < dias; d++) { // 🔥 Itera sobre los días
+                            for (int i = 0; i < (24 ~/ frecuencia); i++) { // 🔥 Itera sobre las horas dentro de cada día
+                              DateTime newScheduledDate = scheduledDate.add(Duration(days: d, hours: frecuencia * i));
+
+                              int notificationId = (scheduledDate.millisecondsSinceEpoch ~/ 1000) % 10000 + (d * 100) + i;
+                              notificationIds.add(notificationId);
+                              print("📅 Programando notificación para: $newScheduledDate con ID: $notificationId");
+
+                              NotificationService.scheduleNotification(
+                                "Recordatorio de medicamento 2",
+                                "Es hora de tomar ${txtnombre.text}",
+                                newScheduledDate,
+                                notificationId, // Pasar el ID único
+                              );
+                            }
                           }
+                          print(notificationIds);
                         }
                       } else {
                         print("⚠️ scheduledDate es nulo o inválido. No se programará la notificación.");
@@ -224,6 +249,7 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                           'Hora': txthora.text,
                           'Dosis': txtdosis.text,
                           'Frecuencia': txtfrecu.text,
+                          'FrecuenciaDias': txtfrecuDias.text,
                           'id_usuario': id_usuario,  // Usar el id_usuario obtenido
                         }),
                       );
@@ -231,22 +257,32 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                       if (response.statusCode == 200) {
                         print('Medicamento guardada correctamente');
 
-                        if (scheduledDate != null) {
-                          print("📅 Programando notificación paraaaaa: $scheduledDate");
-                          NotificationService.scheduleNotification(
-                            "Recordatorio de medicamento",
-                            "Es hora de tomar ${txtnombre.text}",
-                            scheduledDate,
-                          );
+                        print('Respuesta del servidor: ${response.body}'); // 👈 Debug
 
+                        String responseBody = response.body.trim();
+
+                        if (responseBody == "ok") {
+                          print("El servidor devolvió 'ok', pero no un JSON con el ID.");
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Notificación programada para ${txthora.text} el ${txtfecha.text}")),
+                            SnackBar(content: Text("Medicamento guardado, pero no se recibió un ID.")),
                           );
-                        }else{
-                          print("No se programo la notificación");
-                        }
 
-                        Navigator.pop(context, true);
+                        } else {
+                          try {
+                            final responseData = jsonDecode(responseBody);
+                            int medicamentoId = responseData['id']; // Verifica que el servidor devuelva un 'id'
+
+                            // Guardar notificaciones con el ID real
+                            await guardarIdsNotificacion(medicamentoId, notificationIds);
+
+                            Navigator.pop(context, true);
+                          } catch (e) {
+                            print('Error al procesar la respuesta del servidor: $e');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Error al procesar respuesta: ${response.body}")),
+                            );
+                          }
+                        };
                       } else {
                         print('Error al guardar el medicamento: ${response.statusCode}');
                         print('Cuerpo de respuesta: ${response.body}');
@@ -260,6 +296,10 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                         SnackBar(content: Text("Error: $e")),
                       );
                     }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const Listmedicamentos()),
+                    );
                   },
                   child: const Text("Guardar medicamento"),
                 )

@@ -46,18 +46,31 @@ class NotificationService{
   }
 
 
+  static Future<void> cancelNotificationsForMedicamento(int medicamentoId) async {
+    // La lógica para cancelar notificaciones debe basarse en el ID del medicamento
+    for (int i = 0; i < 100; i++) {  // 100 es un número arbitrario, depende de cuántas programaste
+      int notificationId = (medicamentoId * 100) + i; // Mismo cálculo usado al programarlas
+      await flutterLocalNotificationsPlugin.cancel(notificationId);
+      print("❌ Notificación con ID $notificationId cancelada");
+    }
+  }
 
-  static Future<void> scheduleNotification(String title, String body, DateTime scheduledDate) async {
+  static Future<void> cancelNotification(int notificationId) async {
+    await flutterLocalNotificationsPlugin.cancel(notificationId);
+  }
+
+
+
+  static Future<void> scheduleNotification(String title, String body, DateTime scheduledDate, int id) async {
     // 🔥 Asegurar que las zonas horarias están inicializadas
     tz.TZDateTime tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
 
     // 🔄 Si la hora ya pasó, moverla al día siguiente
     if (tzScheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
       tzScheduledDate = tzScheduledDate.add(const Duration(days: 1));
-      print("🔄 La hora ya pasó. Programando para el día siguiente: $tzScheduledDate");
     }
 
-    print("⏰ Intentando programar notificación para: $tzScheduledDate");
+    print("⏰ Intentando programar notificación para: $tzScheduledDate con ID: $id");
 
     const NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -70,17 +83,16 @@ class NotificationService{
     );
 
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      0,
+      id, //Usar un ID único
       title,
       body,
       tzScheduledDate,
       platformChannelSpecifics,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // <- Solo compara la hora
     );
 
-    print("✅ Notificación programada con éxito para: $tzScheduledDate");
+    print("✅ Notificación programada con éxito para: $tzScheduledDate con ID $id");
   }
 
 
