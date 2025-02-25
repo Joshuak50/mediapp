@@ -9,9 +9,9 @@ class LoginResponse
 
   LoginResponse(this.acceso, this.error, this.token, this.idUsuario, this.nombreUsuario);
   LoginResponse.fromJson(Map<String, dynamic> json)
-      : acceso = json['acceso'],
-        error = json['error'],
-        token = json['token'],
-        idUsuario = json['idUsuario'],
-        nombreUsuario = json['nombreUsuario'];
+      : acceso = json['acceso'] ?? '',
+        error = json['error'] ?? '',
+        token = json['token'] ?? '',
+        idUsuario = json['idUsuario'] ?? 0,
+        nombreUsuario = json['nombreUsuario'] ?? '';
 }
