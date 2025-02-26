@@ -22,7 +22,12 @@ class _DatosmedicamentoState extends State<Datosmedicamento> {
   late TextEditingController txtdosis;
   late TextEditingController txtfrecu;
   late TextEditingController txtfrecuDias;
+  late TextEditingController txtalergia;
+  late TextEditingController txtOtraAlergia;
   late TextEditingController txtid_usuario;
+
+  List<String> alergia = ["Paracetamol", "Penicilina", "Digoxina", "Amoxicilina"];
+  String? alergiaSeleccionada;
 
   @override
   void initState() {
@@ -35,7 +40,10 @@ class _DatosmedicamentoState extends State<Datosmedicamento> {
     txtdosis = TextEditingController(text: widget.medicamentos.dosis);
     txtfrecu = TextEditingController(text: widget.medicamentos.frecuencia.toString());
     txtfrecuDias = TextEditingController(text: widget.medicamentos.frecuenciaDias.toString());
+    txtalergia = TextEditingController(text: widget.medicamentos.alergia);
+    txtOtraAlergia = TextEditingController(text: widget.medicamentos.otraAlergia);
     txtid_usuario = TextEditingController(text: widget.medicamentos.id_usuario.toString());
+    alergiaSeleccionada = txtalergia.text;
   }
 
   Future<void> fnActualizarCategoria() async {
@@ -53,6 +61,8 @@ class _DatosmedicamentoState extends State<Datosmedicamento> {
           'dosis': txtdosis.text,
           'frecuencia': txtfrecu.text,
           'frecuenciaDias': txtfrecuDias.text,
+          'alergia': txtalergia.text,
+          'otraAlergia': txtOtraAlergia.text,
           'id_usuario': int.parse(txtid_usuario.text),
         }),
       );
@@ -128,6 +138,16 @@ class _DatosmedicamentoState extends State<Datosmedicamento> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(widget.medicamentos.frecuenciaDias.toString()),
+                const SizedBox(height: 10),
+                const Text(
+                  "Alergia:",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  widget.medicamentos.alergia.toString() == "Otros"
+                      ? widget.medicamentos.otraAlergia.toString()
+                      : widget.medicamentos.alergia.toString(),
+                ),
               ],
             ),
           ),

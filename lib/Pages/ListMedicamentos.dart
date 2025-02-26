@@ -49,7 +49,7 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
         }
       }
     } catch (e) {
-      print('Error: $e');
+      print('Error1: $e');
     }
   }
 
@@ -98,7 +98,7 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
         print('Cuerpo de la respuesta: ${response.body}');
       }
     } catch (e) {
-      print('Error: $e');
+      print('Error2: $e');
     }
   }
 
@@ -135,7 +135,7 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
         return 0.0;
       }
     } catch (e) {
-      print("Error: $e");
+      print("Error3: $e");
       return 0.0;
     }
   }
@@ -170,7 +170,7 @@ class _ListmedicamentosState extends State<Listmedicamentos> {
         print('Cuerpo de respuesta: ${response.body}');
       }
     } catch (e) {
-      print('Error: $e');
+      print('Error4: $e');
     }
   }
 

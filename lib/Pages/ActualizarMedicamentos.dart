@@ -26,7 +26,12 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
   late TextEditingController txtdosis;
   late TextEditingController txtfrecu;
   late TextEditingController txtfrecuDias;
+  late TextEditingController txtalergia;
+  late TextEditingController txtOtraAlergia;
   late TextEditingController txtid_usuario;
+
+  List<String> alergia = ["Paracetamol", "Penicilina", "Digoxina", "Amoxicilina"];
+  String? alergiaSeleccionada;
 
   @override
   void initState() {
@@ -39,7 +44,10 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
     txtdosis = TextEditingController(text: widget.medicamentos.dosis);
     txtfrecu = TextEditingController(text: widget.medicamentos.frecuencia.toString());
     txtfrecuDias = TextEditingController(text: widget.medicamentos.frecuenciaDias.toString());
+    txtalergia = TextEditingController(text: widget.medicamentos.alergia);
+    txtOtraAlergia = TextEditingController(text: widget.medicamentos.otraAlergia);
     txtid_usuario = TextEditingController(text: widget.medicamentos.id_usuario.toString());
+    alergiaSeleccionada = txtalergia.text;
   }
 
   Future<void> fnActualizarCategoria() async {
@@ -57,6 +65,8 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
           'dosis': txtdosis.text,
           'frecuencia': txtfrecu.text,
           'frecuenciaDias': txtfrecuDias.text,
+          'alergia': txtalergia.text,
+          'otraAlergia': txtOtraAlergia.text,
           'id_usuario': int.parse(txtid_usuario.text),
         }),
       );
@@ -178,6 +188,37 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                     labelText: "Dias",
                   ),
                 ),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: "Alergias",
+                  ),
+                  value: alergia.contains(alergiaSeleccionada) ? alergiaSeleccionada : "Otros", // Si no está en la lista, forzar "Otros"
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      alergiaSeleccionada = newValue;
+                      if (newValue != "Otros") {
+                        txtOtraAlergia.text = ""; // Limpia el campo si no es "Otros"
+                      }
+                    });
+                  },
+                  items: alergia.map((String alergia) {
+                    return DropdownMenuItem<String>(
+                      value: alergia,
+                      child: Text(alergia),
+                    );
+                  }).toList()
+                    ..add(const DropdownMenuItem<String>(
+                      value: "Otros",
+                      child: Text("Otros"),
+                    )),
+                ),
+                if (alergiaSeleccionada == "Otros")
+                  TextFormField(
+                    controller: txtOtraAlergia,
+                    decoration: const InputDecoration(
+                      labelText: "Especificar otra alergia",
+                    ),
+                  ),
                 const SizedBox(height: 20),
                 TextButton(
                   onPressed: () async {
@@ -245,6 +286,8 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                           'dosis': txtdosis.text,
                           'frecuencia': txtfrecu.text,
                           'frecuenciaDias': txtfrecuDias.text,
+                          'alergia': alergiaSeleccionada,
+                          'otraAlergia': txtOtraAlergia.text,
                           'id_usuario': int.parse(txtid_usuario.text),
                         }),
                       );

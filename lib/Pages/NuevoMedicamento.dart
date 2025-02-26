@@ -53,6 +53,10 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
   TextEditingController txtdosis = TextEditingController();
   TextEditingController txtfrecu = TextEditingController();
   TextEditingController txtfrecuDias = TextEditingController();
+  TextEditingController txtOtraAlergia = TextEditingController();
+
+  List<String> alergia = ["Paracetamol", "Penicilina", "Digoxina", "Amoxicilina"];
+  String? alergiaSeleccionada = "Paracetamol";
 
   @override
   Widget build(BuildContext context) {
@@ -158,6 +162,38 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                     labelText: "por cuantos dias:",
                   ),
                 ),
+
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: "Alergias",
+                  ),
+                  value: alergia.contains(alergiaSeleccionada) ? alergiaSeleccionada : "Otros", // Si no está en la lista, forzar "Otros"
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      alergiaSeleccionada = newValue;
+                      if (newValue != "Otros") {
+                        txtOtraAlergia.text = ""; // Limpia el campo si no es "Otros"
+                      }
+                    });
+                  },
+                  items: alergia.map((String alergia) {
+                    return DropdownMenuItem<String>(
+                      value: alergia,
+                      child: Text(alergia),
+                    );
+                  }).toList()
+                    ..add(const DropdownMenuItem<String>(
+                      value: "Otros",
+                      child: Text("Otros"),
+                    )),
+                ),
+                if (alergiaSeleccionada == "Otros")
+                  TextFormField(
+                    controller: txtOtraAlergia,
+                    decoration: const InputDecoration(
+                      labelText: "Especificar otra alergia",
+                    ),
+                  ),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () async {
@@ -250,6 +286,8 @@ class _NuevomedicamentoState extends State<Nuevomedicamento> {
                           'Dosis': txtdosis.text,
                           'Frecuencia': txtfrecu.text,
                           'FrecuenciaDias': txtfrecuDias.text,
+                          'Alergia': alergiaSeleccionada,
+                          'OtraAlergia': txtOtraAlergia.text,
                           'id_usuario': id_usuario,  // Usar el id_usuario obtenido
                         }),
                       );
