@@ -24,7 +24,14 @@ public function getAPI(Request $req){
 
 public function listAPI(Request $request) {
     // Obtener el idUsuario del parámetro de la URL
-    $userId = $request->query('user_id');  // Asegúrate de que el parámetro de la URL se llame 'user_id'
+    $userId = $request->query('user_id');
+
+    if (!$userId) {
+        return response()->json([
+            'message' => 'Falta el parámetro user_id',
+            'data' => []
+        ], 400);
+    }
 
     // Filtrar las categorías asociadas al usuario con ese id
     $categorias = Categoria::where('id_usuario', $userId)->get();  // Cambia 'user_id' por 'id_usuario'
@@ -49,7 +56,9 @@ public function saveAPI(Request $req){
     $categoria -> hora = $req->Hora;
     $categoria -> dosis = $req->Dosis;
     $categoria -> frecuencia = $req->Frecuencia;
-    $categoria->frecuenciaDias = $req->FrecuenciaDias;
+    $categoria -> frecuenciaDias = $req->FrecuenciaDias;
+    $categoria -> alergia = $req->Alergia;
+    $categoria -> otraAlergia = $req->OtraAlergia;
     $categoria -> id_usuario = $req->id_usuario;
     $categoria->save();  
     return "ok";
@@ -70,6 +79,8 @@ public function updateAPI(Request $req, $id){
     $categoria -> dosis = $req->dosis;
     $categoria -> frecuencia = $req->frecuencia;
     $categoria -> frecuenciaDias = $req->frecuenciaDias;
+    $categoria -> alergia = $req->alergia;
+    $categoria -> otraAlergia = $req->otraAlergia;
     $categoria -> id_usuario = $req->id_usuario;
     $categoria->save();  
     return "ok";

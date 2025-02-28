@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('dosis');
             $table->integer('frecuencia');
             $table->string('frecuenciaDias');
+            $table->string('alergia');
+            $table->string('otraAlergia')->nullable();
             $table->unsignedBigInteger('id_usuario');
             $table->timestamps();
 
