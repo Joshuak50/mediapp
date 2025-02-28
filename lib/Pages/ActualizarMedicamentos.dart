@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:mediapp/Models/Medicamentos.dart';
 import 'package:http/http.dart' as http;
 import 'package:mediapp/Pages/ListMedicamentos.dart';
+import 'package:mediapp/Pages/NuevoMedicamento.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../Utilerias/Ambiente.dart';
 import '../Widgets/notification_services.dart';
@@ -222,7 +223,22 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                 const SizedBox(height: 20),
                 TextButton(
                   onPressed: () async {
-                    try{
+                    try {
+                      // 1️⃣ Eliminar notificaciones existentes
+                      int medicamentoId = widget.medicamentos.id;
+                      List<int> notificationIds = await obtenerIdsNotificacion(medicamentoId);
+                      print("🔍 IDs de notificaciones a eliminar: $notificationIds");
+
+                      if (notificationIds.isNotEmpty) {
+                        for (int id in notificationIds) {
+                          await NotificationService.cancelNotification(id);
+                          print("❌ Notificación con ID $id cancelada");
+                        }
+                      } else {
+                        print("⚠️ No hay notificaciones asociadas a este medicamento para eliminar.");
+                      }
+
+                      // 2️⃣ Programar nuevas notificaciones
                       DateTime? scheduledDate;
                       if (txtfecha.text.isNotEmpty && txthora.text.isNotEmpty) {
                         List<String> fechaParts = txtfecha.text.split('-');
@@ -238,7 +254,6 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                               int.parse(horaParts[1].trim()),  // Minuto
                             );
 
-                            // Convertir a TZDateTime usando la zona horaria local
                             scheduledDate = tz.TZDateTime.from(localDateTime, tz.local);
 
                             // Si la hora ya pasó, mover al día siguiente
@@ -246,35 +261,45 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                               scheduledDate = scheduledDate.add(const Duration(days: 1));
                               print("🔄 La hora ya pasó. Programando para el día siguiente: $scheduledDate");
                             }
-
                           } catch (e) {
                             print("❌ Error al convertir fecha y hora: $e");
                           }
                         }
                       }
 
-                      int notificationID = 1;
-
-// Si la fecha es válida, programar la notificación
+                      List<int> newNotificationIds = [];
                       if (scheduledDate != null) {
-                        print("📅 Programando notificación para: $scheduledDate");
-
-                        NotificationService.scheduleNotification(
-                          "Recordatorio de medicamento",
-                          "Es hora de tomar ${txtnombre.text}",
-                          scheduledDate,
-                          notificationID,
-                        );
-
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text("Notificación programada para ${txthora.text} el ${txtfecha.text}")),
                         );
+
+                        int frecuencia = int.tryParse(txtfrecu.text) ?? 0;
+                        int dias = int.tryParse(txtfrecuDias.text) ?? 0;
+
+                        if (frecuencia > 0 && dias > 0) {
+                          for (int d = 0; d < dias; d++) {
+                            for (int i = 0; i < (24 ~/ frecuencia); i++) {
+                              DateTime newScheduledDate = scheduledDate.add(Duration(days: d, hours: frecuencia * i));
+                              int notificationId = (scheduledDate.millisecondsSinceEpoch ~/ 1000) % 10000 + (d * 100) + i;
+                              newNotificationIds.add(notificationId);
+                              print("📅 Programando notificación para: $newScheduledDate con ID: $notificationId");
+
+                              NotificationService.scheduleNotification(
+                                "Recordatorio de medicamento",
+                                "Es hora de tomar ${txtnombre.text}",
+                                newScheduledDate,
+                                notificationId,
+                              );
+                            }
+                          }
+                        }
                       } else {
                         print("⚠️ scheduledDate es nulo o inválido. No se programará la notificación.");
                       }
 
+                      // 3️⃣ Actualizar el medicamento en la base de datos
                       final response = await http.put(
-                        Uri.parse('${Ambiente.urlServe}/api/categoria/${widget.medicamentos.id}/actu'),
+                        Uri.parse('${Ambiente.urlServe}/api/categoria/$medicamentoId/actu'),
                         headers: <String, String>{
                           'Content-Type': 'application/json; charset=UTF-8',
                         },
@@ -293,7 +318,11 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                       );
 
                       if (response.statusCode == 200) {
-                        print('Medicamento actualizada correctamente');
+                        print('Medicamento actualizado correctamente');
+
+                        // 4️⃣ Guardar los nuevos IDs de notificación
+                        await guardarIdsNotificacion(medicamentoId, newNotificationIds);
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const Listmedicamentos()),
@@ -305,12 +334,11 @@ class _ActualizarmedicamentosState extends State<Actualizarmedicamentos> {
                     } catch (e) {
                       print('Error: $e');
                     }
-
                   },
                   child: const Text("Actualizar"),
                 ),
-                const SizedBox(height: 20),
 
+                const SizedBox(height: 20),
               ],
             ),
           ),
