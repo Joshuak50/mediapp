@@ -1,24 +1,26 @@
-deploy:
-  needs: build
-  runs-on: ubuntu-latest
+name: Deploy
 
-  steps:
-    - name: Configurar credenciales AWS
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} #agregar id de AWS
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} #agregar contraseña AWS
-        aws-region: us-east-1  # Cambia por tu región de AWS tambien modificar demás cosas
+on:
+  push:
+    branches:
+      - backend-jesus-mediapp
+      
+jobs:
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
 
-    - name: Login en Amazon ECR
-      run: |
-        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <TU_ID_ECR>.dkr.ecr.us-east-1.amazonaws.com
+    steps:
 
-    - name: Subir imagen a Amazon ECR
-      run: |
-        docker tag mediapp-backend <TU_ID_ECR>.dkr.ecr.us-east-1.amazonaws.com/mediapp-backend:latest #
-        docker push <TU_ID_ECR>.dkr.ecr.us-east-1.amazonaws.com/mediapp-backend:latest
+      - name: Login en Amazon ECR
+        run: |
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/r9v6v5c8
 
-    - name: Actualizar la tarea en ECS
-      run: |
-        aws ecs update-service --cluster mediapp-cluster --service mediapp-service --force-new-deployment
+      - name: Subir imagen a Amazon ECR
+        run: |
+          docker tag mediapp-image:latest public.ecr.aws/r9v6v5c8/myecr-repo-public:latest
+          docker push public.ecr.aws/r9v6v5c8/myecr-repo-public:latest
+
+      - name: Actualizar la tarea en ECS
+        run: |
+          aws ecs update-service --cluster mediapp-cluster --service mediapp-service --force-new-deployment
