@@ -1,26 +1,89 @@
-name: Deploy
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - backend-jesus-mediapp
-      
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: public.ecr.aws/r9v6v5c8
+  ECR_REPOSITORY: myecr-repo-public
+  CONTAINER_NAME: mediapp-image
+  ECS_CLUSTER: mediapp-cluster
+  ECS_SERVICE: mediapp-service
+
 jobs:
-  deploy:
-    needs: build
+  build-test:
     runs-on: ubuntu-latest
-
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Login en Amazon ECR
-        run: |
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/r9v6v5c8
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Subir imagen a Amazon ECR
-        run: |
-          docker tag mediapp-image:latest public.ecr.aws/r9v6v5c8/myecr-repo-public:latest
-          docker push public.ecr.aws/r9v6v5c8/myecr-repo-public:latest
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Actualizar la tarea en ECS
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}
+          tags: |
+            type=sha,format=long
+            type=date,pattern=yyyyMMdd-HHmmss
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run tests
         run: |
-          aws ecs update-service --cluster mediapp-cluster --service mediapp-service --force-new-deployment
+          docker run --rm ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.tag }} \
+            sh -c "composer test && npm run test"
+
+  deploy:
+    needs: build-test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Force ECS deployment
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --force-new-deployment \
+            --query "service.deployments" \
+            --output table
+
+      - name: Verify deployment status
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }}

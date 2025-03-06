@@ -8,30 +8,38 @@ services:
     image: backend_mediapp
     container_name: mediapp
     volumes:
-      - .:/var/www
+      - .:/home/mediapp/backend-jesus-mediapp/mediapp
+      - ./storage:/home/mediapp/backend-jesus-mediapp/mediapp/storage  # Persistir storage
     ports:
-      - "8000:9000"
+      - "8000:80"
+    env_file: .env  # Usar archivo externo para variables
     depends_on:
-      - db
-    environment:  # Agrega variables de entorno si tu app necesita conectarse a la DB
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: mediapp
-      DB_USER: postgres
-      DB_PASSWORD: asdasdasd123
+      db:
+        condition: service_healthy
+    networks:
+      - mediapp-network
 
   db:
-    image: postgres:12  # Imagen oficial de PostgreSQL (versión preferible 12)
+    image: postgres:12
     container_name: mediapp_db
-    restart: always
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: mediapp        # Nombre de la base de datos
-      POSTGRES_USER: postgres     # Usuario (tú lo indicaste)
-      POSTGRES_PASSWORD: asdasdasd123  # Contraseña que proporcionaste
-    ports:
-      - "5432:5432"  # Puerto predeterminado de PostgreSQL
+      POSTGRES_DB: mediapp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: asdasdasd123
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Volumen para persistencia de datos
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mediapp-network
 
 volumes:
-  postgres_data:  # Define un volumen para PostgreSQL
+  postgres_data:
+
+networks:
+  mediapp-network:
+    driver: bridge
