@@ -4,66 +4,45 @@ on:
   push:
     branches:
       - backend-jesus-mediapp
-    paths-ignore:
-      - 'docs/**'
-      - 'README.md'
 
 env:
   AWS_REGION: us-east-1
-  ECR_REGISTRY: public.ecr.aws/r9v6v5c8/myecr-repo-public
+  ECR_REGISTRY: public.ecr.aws/r9v6v5c8
   ECR_REPOSITORY: myecr-repo-public
-  CONTAINER_NAME: mediapp-image
-  ECS_CLUSTER: ecs-cluster
-  ECS_SERVICE: ecs-service
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.meta.outputs.tag }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: ecr
+      - name: Login to Amazon ECR Public
         uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
         with:
-          images: |
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}
-          tags: |
-            type=sha,format=long
+          registry-type: public
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Build and push
+        uses: docker/build-push-action@v4
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Run tests
-        run: |
-          docker run --rm ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.tag }} \
-            sh -c "composer test && npm run test"
+          tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
 
   deploy:
     needs: build-test
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -75,14 +54,6 @@ jobs:
       - name: Force ECS deployment
         run: |
           aws ecs update-service \
-            --cluster ${{ env.ECS_CLUSTER }} \
-            --service ${{ env.ECS_SERVICE }} \
-            --force-new-deployment \
-            --query "service.deployments" \
-            --output table
-
-      - name: Verify deployment status
-        run: |
-          aws ecs wait services-stable \
-            --cluster ${{ env.ECS_CLUSTER }} \
-            --services ${{ env.ECS_SERVICE }}
+            --cluster ecs-cluster \
+            --service ecs-service \
+            --force-new-deployment

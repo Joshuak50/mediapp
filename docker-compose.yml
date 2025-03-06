@@ -5,14 +5,14 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
-    image: backend_mediapp
+    image: mediapp-image
     container_name: mediapp
     volumes:
       - .:/home/mediapp/backend-jesus-mediapp/mediapp
-      - ./storage:/home/mediapp/backend-jesus-mediapp/mediapp/storage  # Persistir storage
+      - ./storage:/home/mediapp/backend-jesus-mediapp/mediapp/storage
     ports:
       - "8000:80"
-    env_file: .env  # Usar archivo externo para variables
+    env_file: .env
     depends_on:
       db:
         condition: service_healthy
