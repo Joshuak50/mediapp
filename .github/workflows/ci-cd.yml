@@ -10,11 +10,11 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REGISTRY: public.ecr.aws/r9v6v5c8
+  ECR_REGISTRY: public.ecr.aws/r9v6v5c8/myecr-repo-public
   ECR_REPOSITORY: myecr-repo-public
   CONTAINER_NAME: mediapp-image
-  ECS_CLUSTER: mediapp-cluster
-  ECS_SERVICE: mediapp-service
+  ECS_CLUSTER: ecs-cluster
+  ECS_SERVICE: ecs-service
 
 jobs:
   build-test:
@@ -44,7 +44,6 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}
           tags: |
             type=sha,format=long
-            type=date,pattern=yyyyMMdd-HHmmss
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
